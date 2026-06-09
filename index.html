@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Sleeper Dynasty Dashboard</title>
+<style>
+:root{--bg:#07111f;--card:#101b2e;--card2:#14243c;--text:#f6f8fc;--muted:#91a3bb;--line:#263852;--a:#7c5cff;--b:#00d4ff;--good:#37d99e;--bad:#ff647c;--warn:#ffd166}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top left,#182a57 0,transparent 32%),var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+.wrap{max-width:1100px;margin:auto;padding:18px 14px 90px}.hero h1{font-size:34px;line-height:1;margin:8px 0}.hero p{color:var(--muted);margin:0 0 14px}
+.toolbar{position:sticky;top:0;z-index:5;background:rgba(7,17,31,.9);backdrop-filter:blur(14px);padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.row{display:grid;grid-template-columns:1fr auto;gap:8px}.searchrow{display:grid;grid-template-columns:1fr;gap:8px;margin-top:8px}
+input,select,button{font:inherit;border-radius:14px;border:1px solid var(--line);padding:12px;background:#0b1627;color:var(--text)}
+button{background:linear-gradient(135deg,var(--a),#3979ff);font-weight:800;border:0}.tabs{display:flex;overflow:auto;gap:8px;margin-top:10px}.tab{white-space:nowrap;background:#101b2e;border:1px solid var(--line);padding:10px 12px;border-radius:999px;font-size:13px}.tab.active{background:linear-gradient(135deg,var(--a),#3979ff)}
+.status{color:var(--muted);font-size:13px;margin-top:8px}.section{display:none}.section.active{display:block}h2{font-size:24px;margin:22px 0 10px}
+.grid{display:grid;gap:12px}.card{background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px;box-shadow:0 14px 40px rgba(0,0,0,.24)}
+.statgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.stat{background:#0b1627;border:1px solid var(--line);border-radius:14px;padding:10px}.stat b{font-size:22px}.stat span{display:block;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.manager{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}.avatar{width:44px;height:44px;border-radius:14px;background:#1b2b46;object-fit:cover}.rank{width:34px;height:34px;border-radius:12px;background:#1b2b46;display:grid;place-items:center;font-weight:900}.name{font-weight:900}.sub{color:var(--muted);font-size:12px}
+.pill{display:inline-flex;padding:5px 8px;border-radius:999px;background:#1a2943;border:1px solid rgba(255,255,255,.07);font-size:12px;font-weight:800;margin:2px}.good{color:var(--good)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.record{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07)}.record:last-child{border-bottom:0}
+.trade{background:#0b1627;border:1px solid var(--line);border-radius:16px;padding:12px}.trade pre,.debug{white-space:pre-wrap;overflow:auto;background:#050b14;border:1px solid #1d2d46;border-radius:12px;padding:10px;color:#d5dfef;font-size:11px}
+@media(min-width:760px){.wrap{padding:28px 22px 100px}.hero h1{font-size:52px}.grid.two{grid-template-columns:1fr 1fr}.grid.three{grid-template-columns:repeat(3,1fr)}.statgrid{grid-template-columns:repeat(4,1fr)}.searchrow{grid-template-columns:1fr 220px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <div style="color:var(--b);font-weight:900;text-transform:uppercase;font-size:12px;letter-spacing:.12em">Sleeper Dynasty Hub</div>
+  <h1 id="title">Loading league…</h1>
+  <p>Mobile-first dynasty history dashboard. Fetches Sleeper data live from your League ID and calculates standings, luck, records, trades, manager profiles, awards, and comparisons.</p>
+</header>
+
+<div class="toolbar">
+  <div class="row">
+    <input id="leagueId" value="1326629536078528512" />
+    <button id="load">Load</button>
+  </div>
+  <div class="searchrow">
+    <input id="q" placeholder="Search managers, trades, records…" />
+    <select id="season"><option value="all">All seasons</option></select>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-tab="overview">Overview</button>
+    <button class="tab" data-tab="managers">Managers</button>
+    <button class="tab" data-tab="compare">Compare</button>
+    <button class="tab" data-tab="trades">Trades</button>
+    <button class="tab" data-tab="records">Records</button>
+    <button class="tab" data-tab="debug">Debug</button>
+  </div>
+  <div id="status" class="status">Ready.</div>
+</div>
+
+<section id="overview" class="section active">
+  <h2>League Snapshot</h2>
+  <div id="snapshot" class="grid two"></div>
+  <h2>Awards</h2>
+  <div id="awards" class="grid two"></div>
+</section>
+
+<section id="managers" class="section">
+  <h2>Manager Rankings</h2>
+  <div id="managerList" class="grid"></div>
+</section>
+
+<section id="compare" class="section">
+  <h2>Compare Managers</h2>
+  <div class="grid two">
+    <select id="a"></select>
+    <select id="b"></select>
+  </div>
+  <div id="compareOut" class="grid two" style="margin-top:12px"></div>
+</section>
+
+<section id="trades" class="section">
+  <h2>Trade Center</h2>
+  <div id="tradeList" class="grid"></div>
+</section>
+
+<section id="records" class="section">
+  <h2>League Records</h2>
+  <div id="recordsOut" class="grid two"></div>
+</section>
+
+<section id="debug" class="section">
+  <h2>Debug</h2>
+  <div id="debugLog" class="debug"></div>
+</section>
+</div>
+
+<script>
+const API="https://api.sleeper.app/v1";
+let S={leagueId:"1326629536078528512",leagues:[],managers:new Map(),trades:[],games:[],awards:[],season:"all",q:""};
+
+const $=id=>document.getElementById(id);
+const clean=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=n=>Number.isFinite(n)?Math.round(n*10)/10:"—";
+const pct=n=>Number.isFinite(n)?(n*100).toFixed(1)+"%":"—";
+const log=m=>{$("debugLog").textContent+=`[${new Date().toLocaleTimeString()}] ${m}\n`;console.log(m)};
+const status=m=>$("status").textContent=m;
+const api=async path=>{log("GET "+path);let r=await fetch(API+path);if(!r.ok)throw Error(r.status+" "+path);return r.json()};
+const avatar=id=>id?`https://sleepercdn.com/avatars/thumbs/${id}`:"";
+
+function blank(ownerId){
+  return {ownerId,username:"",displayName:"",teamName:"",avatar:"",seasons:new Set(),wins:0,losses:0,ties:0,pf:0,pa:0,
+  allW:0,allL:0,luck:0,highWeeks:0,badBeats:0,trades:0,titles:0,playoffs:0,seasonRows:[],partners:new Map(),weekly:[]};
+}
+function getM(id){if(!S.managers.has(id))S.managers.set(id,blank(id));return S.managers.get(id)}
+function name(m){return m.teamName||m.displayName||m.username||"Unknown Manager"}
+function score(m){let g=m.wins+m.losses+m.ties;return m.titles*100+m.playoffs*20+(g?m.wins/g*50:0)+m.pf/100+m.luck*2}
+
+async function load(){
+  try{
+    S={leagueId:$("leagueId").value.trim(),leagues:[],managers:new Map(),trades:[],games:[],awards:[],season:"all",q:""};
+    $("debugLog").textContent="";
+    status("Loading Sleeper league…");
+
+    let id=S.leagueId, guard=0;
+    while(id&&guard++<12){
+      let league=await api(`/league/${id}`);
+      if(!league)break;
+      S.leagues.unshift(league);
+      id=league.previous_league_id;
+    }
+
+    for(let league of S.leagues) await loadLeague(league);
+
+    computeAwards();
+    render();
+    status(`Loaded ${S.leagues.length} season(s), ${S.managers.size} manager(s), ${S.trades.length} trade(s).`);
+  }catch(e){
+    status("Error loading data. Check Debug.");
+    log("ERROR: "+e.message);
+  }
+}
+
+async function loadLeague(league){
+  const season=String(league.season||"unknown");
+  status("Loading "+season+"…");
+
+  const [users,rosters]=await Promise.all([
+    api(`/league/${league.league_id}/users`),
+    api(`/league/${league.league_id}/rosters`)
+  ]);
+
+  const rosterToOwner=new Map();
+
+  for(let u of users||[]){
+    let m=getM(u.user_id);
+    m.username=u.username||m.username;
+    m.displayName=u.display_name||m.displayName;
+    m.avatar=u.avatar||m.avatar;
+    if(u.metadata?.team_name)m.teamName=u.metadata.team_name;
+  }
+
+  for(let r of rosters||[]){
+    if(!r.owner_id)continue;
+    rosterToOwner.set(r.roster_id,r.owner_id);
+    let m=getM(r.owner_id);
+    m.seasons.add(season);
+    m.wins+=Number(r.settings?.wins||0);
+    m.losses+=Number(r.settings?.losses||0);
+    m.ties+=Number(r.settings?.ties||0);
+    m.pf+=Number(r.settings?.fpts||0)+Number(r.settings?.fpts_decimal||0)/100;
+    m.pa+=Number(r.settings?.fpts_against||0)+Number(r.settings?.fpts_against_decimal||0)/100;
+  }
+
+  for(let week=1;week<=18;week++){
+    let matchups=[];
+    try{matchups=await api(`/league/${league.league_id}/matchups/${week}`)}catch(e){continue}
+    if(!Array.isArray(matchups)||!matchups.length)continue;
+
+    const scored=matchups.filter(x=>x.points!=null).map(x=>({roster:x.roster_id,owner:rosterToOwner.get(x.roster_id),points:Number(x.points||0),matchup:x.matchup_id}));
+    if(!scored.length)continue;
+
+    let sorted=[...scored].sort((a,b)=>b.points-a.points);
+    if(sorted[0]?.owner)getM(sorted[0].owner).highWeeks++;
+
+    for(let row of scored){
+      if(!row.owner)continue;
+      let m=getM(row.owner);
+      m.weekly.push({season,week,points:row.points});
+      let allWins=scored.filter(x=>row.points>x.points).length;
+      let allLoss=scored.filter(x=>row.points<x.points).length;
+      m.allW+=allWins;
+      m.allL+=allLoss;
+    }
+
+    const groups=new Map();
+    for(let row of scored){
+      if(!groups.has(row.matchup))groups.set(row.matchup,[]);
+      groups.get(row.matchup).push(row);
+    }
+
+    for(let g of groups.values()){
+      if(g.length!==2)continue;
+      let [x,y]=g;
+      let winner=x.points>=y.points?x:y;
+      let loser=x.points>=y.points?y:x;
+      S.games.push({season,week,winner:ownerName(winner.owner),loser:ownerName(loser.owner),winnerId:winner.owner,loserId:loser.owner,wp:winner.points,lp:loser.points,margin:Math.abs(winner.points-loser.points)});
+      if(loser.owner){
+        const median=sorted[Math.floor(sorted.length/2)]?.points||0;
+        if(loser.points>median)getM(loser.owner).badBeats++;
+      }
+    }
+  }
+
+  for(let m of S.managers.values()){
+    let weeks=m.weekly.filter(w=>w.season===season);
+    if(weeks.length){
+      let pf=weeks.reduce((s,w)=>s+w.points,0);
+      let expected=weeks.reduce((s,w)=>{
+        let wk=[...S.managers.values()].flatMap(mm=>mm.weekly.filter(x=>x.season===season&&x.week===w.week));
+        return s+wk.filter(x=>w.points>x.points).length/(Math.max(1,wk.length-1));
+      },0);
+      if(!m.seasonRows.some(r=>r.season===season))m.seasonRows.push({season,pf,expected,weeks:weeks.length});
+    }
+  }
+
+  for(let week=1;week<=18;week++){
+    let tx=[];
+    try{tx=await api(`/league/${league.league_id}/transactions/${week}`)}catch(e){continue}
+    for(let t of tx||[]){
+      if(t.type!=="trade"||t.status!=="complete")continue;
+      let managers=[...new Set((t.roster_ids||[]).map(r=>rosterToOwner.get(r)).filter(Boolean))];
+      for(let id of managers){
+        let m=getM(id);
+        m.trades++;
+        for(let other of managers)if(other!==id)m.partners.set(other,(m.partners.get(other)||0)+1);
+      }
+      S.trades.push({season,week,created:t.created,managers,names:managers.map(id=>ownerName(id)),raw:t});
+    }
+  }
+}
+
+function ownerName(id){return id?name(getM(id)):"Unknown"}
+
+function finalizeLuck(){
+  for(let m of S.managers.values()){
+    let actual=m.wins+(m.ties*.5);
+    let total=m.allW+m.allL;
+    let expected=total?(m.allW/total)*(m.wins+m.losses+m.ties):0;
+    m.luck=actual-expected;
+  }
+}
+
+function computeAwards(){
+  finalizeLuck();
+  const arr=[...S.managers.values()].filter(m=>m.seasons.size);
+  const add=(label,desc,sort,value)=>{
+    const m=[...arr].sort(sort)[0];
+    if(m)S.awards.push({label,desc,manager:name(m),value:value(m)});
+  };
+  add("🏆 Dynasty GOAT","Best blend of titles, playoff appearances, wins, scoring, and luck.",(a,b)=>score(b)-score(a),m=>"Score "+fmt(score(m)));
+  add("🍀 Luckiest Manager","Most wins above all-play expectation.",(a,b)=>b.luck-a.luck,m=>fmt(m.luck)+" wins");
+  add("☠️ Unluckiest Manager","Most wins below all-play expectation.",(a,b)=>a.luck-b.luck,m=>fmt(m.luck)+" wins");
+  add("🔥 High Score King","Most weekly top scores.",(a,b)=>b.highWeeks-a.highWeeks,m=>m.highWeeks+" weeks");
+  add("🤝 Trade Addict","Most completed trades.",(a,b)=>b.trades-a.trades,m=>m.trades+" trades");
+  add("💔 Bad Beat Magnet","Most losses while scoring above the weekly median.",(a,b)=>b.badBeats-a.badBeats,m=>m.badBeats+" bad beats");
+}
+
+function filteredManagers(){
+  let arr=[...S.managers.values()].filter(m=>m.seasons.size);
+  if(S.season!=="all")arr=arr.filter(m=>m.seasons.has(S.season));
+  if(S.q)arr=arr.filter(m=>(name(m)+" "+m.username+" "+m.displayName).toLowerCase().includes(S.q));
+  return arr.sort((a,b)=>score(b)-score(a));
+}
+
+function render(){
+  const seasons=[...new Set(S.leagues.map(l=>String(l.season)))].sort();
+  $("season").innerHTML=`<option value="all">All seasons</option>`+seasons.map(s=>`<option value="${s}">${s}</option>`).join("");
+  $("title").textContent=(S.leagues.at(-1)?.name||"Sleeper League")+" Hall of Fame";
+  renderSnapshot();renderAwards();renderManagers();renderTrades();renderRecords();renderCompareOptions();renderCompare();
+}
+
+function mini(m,i){
+  const g=m.wins+m.losses+m.ties, wp=g?m.wins/g:0;
+  return `<div class="manager">
+    <div class="rank">${i}</div>
+    ${m.avatar?`<img class="avatar" src="${avatar(m.avatar)}">`:`<div class="avatar"></div>`}
+    <div><div class="name">${clean(name(m))}</div><div class="sub">${m.wins}-${m.losses}${m.ties?'-'+m.ties:''} • ${pct(wp)} • PF ${fmt(m.pf)}</div></div>
+    <div class="pill">${fmt(score(m))}</div>
+  </div>`;
+}
+
+function renderSnapshot(){
+  const arr=filteredManagers(), top=arr[0];
+  const games=arr.reduce((s,m)=>s+m.wins+m.losses+m.ties,0);
+  const pf=arr.reduce((s,m)=>s+m.pf,0);
+  $("snapshot").innerHTML=`
+  <div class="card"><h3>League Totals</h3><div class="statgrid">
+    <div class="stat"><b>${S.leagues.length}</b><span>Seasons</span></div>
+    <div class="stat"><b>${arr.length}</b><span>Managers</span></div>
+    <div class="stat"><b>${games}</b><span>Games</span></div>
+    <div class="stat"><b>${fmt(pf)}</b><span>Total PF</span></div>
+  </div></div>
+  <div class="card"><h3>Current King</h3>${top?mini(top,1):"No data."}</div>`;
+}
+
+function renderAwards(){
+  $("awards").innerHTML=S.awards.map(a=>`
+  <div class="card">
+    <div class="pill warn">${clean(a.label)}</div>
+    <h3>${clean(a.manager)}</h3>
+    <p class="sub">${clean(a.desc)}</p>
+    <div class="pill">${clean(a.value)}</div>
+  </div>`).join("");
+}
+
+function managerCard(m,i){
+  const g=m.wins+m.losses+m.ties, wp=g?m.wins/g:0;
+  const ap=(m.allW+m.allL)?m.allW/(m.allW+m.allL):0;
+  const partner=[...m.partners.entries()].sort((a,b)=>b[1]-a[1])[0];
+  return `<div class="card">
+    ${mini(m,i)}
+    <div class="statgrid" style="margin-top:12px">
+      <div class="stat"><b>${m.wins}-${m.losses}</b><span>Record</span></div>
+      <div class="stat"><b>${pct(wp)}</b><span>Win %</span></div>
+      <div class="stat"><b>${fmt(m.pf)}</b><span>Points For</span></div>
+      <div class="stat"><b class="${m.luck>=0?'good':'bad'}">${fmt(m.luck)}</b><span>Luck</span></div>
+    </div>
+    <div style="margin-top:10px">
+      <span class="pill">🏆 ${m.titles} titles</span>
+      <span class="pill">🎟️ ${m.playoffs} playoffs</span>
+      <span class="pill">🔥 ${m.highWeeks} high weeks</span>
+      <span class="pill">🤝 ${m.trades} trades</span>
+      <span class="pill">All-play ${pct(ap)}</span>
+      ${partner?`<span class="pill">Top partner: ${clean(ownerName(partner[0]))} ×${partner[1]}</span>`:""}
+    </div>
+    <div style="margin-top:10px">${m.seasonRows.map(r=>`<div class="record"><span>${r.season} <span class="sub">PF ${fmt(r.pf)} • Weeks ${r.weeks}</span></span><b>xW ${fmt(r.expected)}</b></div>`).join("")}</div>
+  </div>`;
+}
+
+function renderManagers(){
+  $("managerList").innerHTML=filteredManagers().map(managerCard).join("")||`<div class="card">No managers match.</div>`;
+}
+
+function renderTrades(){
+  let trades=[...S.trades].sort((a,b)=>(b.created||0)-(a.created||0));
+  if(S.season!=="all")trades=trades.filter(t=>t.season===S.season);
+  if(S.q)trades=trades.filter(t=>(t.names.join(" ")+" "+JSON.stringify(t.raw)).toLowerCase().includes(S.q));
+  $("tradeList").innerHTML=trades.slice(0,200).map(t=>`
+    <div class="trade">
+      <div class="record"><span><b>${clean(t.names.join(" ↔ "))}</b><br><span class="sub">${t.season} • Week ${t.week}</span></span><span class="pill">Trade</span></div>
+      <details><summary class="sub">Open Sleeper trade payload</summary><pre>${clean(JSON.stringify(t.raw,null,2))}</pre></details>
+    </div>`).join("")||`<div class="card">No trades found.</div>`;
+}
+
+function renderRecords(){
+  const highs=[];
+  for(const m of S.managers.values())for(const w of m.weekly)highs.push({...w,manager:name(m)});
+  highs.sort((a,b)=>b.points-a.points);
+  const blow=[...S.games].sort((a,b)=>b.margin-a.margin)[0];
+  const close=[...S.games].filter(g=>g.margin>0).sort((a,b)=>a.margin-b.margin)[0];
+  $("recordsOut").innerHTML=`
+  <div class="card"><h3>Highest Weeks</h3>${highs.slice(0,12).map((r,i)=>`<div class="record"><span>${i+1}. ${clean(r.manager)}<br><span class="sub">${r.season} Week ${r.week}</span></span><b>${fmt(r.points)}</b></div>`).join("")}</div>
+  <div class="card"><h3>Matchup Records</h3>
+    ${blow?`<div class="record"><span>Biggest blowout<br><span class="sub">${clean(blow.winner)} over ${clean(blow.loser)} • ${blow.season} W${blow.week}</span></span><b>${fmt(blow.margin)}</b></div>`:""}
+    ${close?`<div class="record"><span>Closest win<br><span class="sub">${clean(close.winner)} over ${clean(close.loser)} • ${close.season} W${close.week}</span></span><b>${fmt(close.margin)}</b></div>`:""}
+  </div>`;
+}
+
+function renderCompareOptions(){
+  const opts=[...S.managers.values()].filter(m=>m.seasons.size).sort((a,b)=>name(a).localeCompare(name(b))).map(m=>`<option value="${m.ownerId}">${clean(name(m))}</option>`).join("");
+  $("a").innerHTML=opts;$("b").innerHTML=opts;if($("b").options.length>1)$("b").selectedIndex=1;
+}
+
+function renderCompare(){
+  const A=getM($("a").value),B=getM($("b").value);
+  if(!A||!B||A===B){$("compareOut").innerHTML=`<div class="card">Pick two different managers.</div>`;return}
+  const rows=[
+    ["Dynasty score",score(A),score(B)],["Wins",A.wins,B.wins],["Win %",A.wins/(A.wins+A.losses+A.ties||1),B.wins/(B.wins+B.losses+B.ties||1),"pct"],
+    ["Points For",A.pf,B.pf],["Luck",A.luck,B.luck],["Trades",A.trades,B.trades],["High weeks",A.highWeeks,B.highWeeks],["Bad beats",A.badBeats,B.badBeats]
+  ];
+  $("compareOut").innerHTML=[A,B].map((m,idx)=>`<div class="card"><h3>${clean(name(m))}</h3>${rows.map(r=>`<div class="record"><span>${r[0]}</span><b>${r[3]==="pct"?pct(r[idx+1]):fmt(r[idx+1])}</b></div>`).join("")}</div>`).join("");
+}
+
+$("load").onclick=load;
+$("q").oninput=e=>{S.q=e.target.value.trim().toLowerCase();renderSnapshot();renderManagers();renderTrades()};
+$("season").onchange=e=>{S.season=e.target.value;renderSnapshot();renderManagers();renderTrades()};
+$("a").onchange=renderCompare;$("b").onchange=renderCompare;
+document.querySelectorAll(".tab").forEach(btn=>btn.onclick=()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  document.querySelectorAll(".section").forEach(x=>x.classList.remove("active"));
+  btn.classList.add("active");$(btn.dataset.tab).classList.add("active");
+});
+load();
+</script>
+</body>
+</html>
